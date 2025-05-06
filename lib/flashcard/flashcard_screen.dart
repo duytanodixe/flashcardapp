@@ -22,7 +22,6 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
   int _correctCount = 0;
   bool _showQuiz = false;
   List<FlashcardData> _cards = [];
-  List<bool> _quizResults = [];
   int _progressPercent = 0;
 
   // Thêm GlobalKey để điều khiển FlipFlashcard
@@ -83,7 +82,6 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
             } else if (state is FlashcardLoaded) {
               if (_cards.isEmpty) {
                 _cards = state.cards;
-                _quizResults = List.filled(_cards.length, false);
               }
               if (_showQuiz) {
                 if (widget.courseId == 'course2') {
@@ -644,7 +642,7 @@ class GrammarQuizScreen extends StatefulWidget {
 }
 
 class _GrammarQuizScreenState extends State<GrammarQuizScreen> {
-  late List<_GrammarQuestion> questions;
+  late List<GrammarTestQuestion> questions;
   int current = 0;
   int correct = 0;
   final _controller = TextEditingController();
@@ -655,6 +653,12 @@ class _GrammarQuizScreenState extends State<GrammarQuizScreen> {
   void initState() {
     super.initState();
     questions = getGrammarTest(widget.tenseId);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   void _submit() {
