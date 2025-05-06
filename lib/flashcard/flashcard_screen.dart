@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:doantotnghiep/flashcard/flashcard_cubit.dart';
 import 'package:doantotnghiep/flashcard/flashcard_state.dart';
+import 'package:doantotnghiep/flashcard/test.dart';
 
 class FlashcardScreen extends StatefulWidget {
   final String courseId;
@@ -24,6 +25,9 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
   List<bool> _quizResults = [];
   int _progressPercent = 0;
 
+  // Thêm GlobalKey để điều khiển FlipFlashcard
+  final GlobalKey<_FlipFlashcardState> _showFrontKey = GlobalKey<_FlipFlashcardState>();
+
   @override
   void initState() {
     super.initState();
@@ -36,6 +40,8 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
     setState(() {
       if (_currentIndex < _cards.length - 1) {
         _currentIndex++;
+        // Luôn hiện mặt trước khi chuyển sang thẻ mới
+        _showFrontKey.currentState?.showFront();
       } else {
         _showQuiz = true;
       }
@@ -83,12 +89,20 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                 if (widget.courseId == 'course2') {
                   return MatchingQuizScreen(
                     cards: _cards,
-                    onFinish: _onQuizFinish,
+                    onFinish: (correct) {
+                      _onQuizFinish(correct);
+                      // Quay lại màn hình chính sau khi làm xong bài thi
+                      Navigator.pop(context);
+                    },
                   );
                 }
                 return QuizScreen(
                   cards: _cards,
-                  onFinish: _onQuizFinish,
+                  onFinish: (correct) {
+                    _onQuizFinish(correct);
+                    // Quay lại màn hình chính sau khi làm xong bài thi
+                    Navigator.pop(context);
+                  },
                 );
               }
               double percent = _progressPercent / 100.0;
@@ -133,6 +147,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                   ),
                   Expanded(
                     child: FlipFlashcard(
+                      key: _showFrontKey,
                       card: _cards[_currentIndex],
                       tts: _flutterTts,
                     ),
@@ -222,6 +237,12 @@ class _FlipFlashcardState extends State<FlipFlashcard>
       _controller.reverse();
     } else {
       _controller.forward();
+    }
+  }
+
+  void showFront() {
+    if (_controller.isCompleted) {
+      _controller.reverse();
     }
   }
 
@@ -607,6 +628,102 @@ class _MatchingQuizScreenState extends State<MatchingQuizScreen> {
             ),
           if (submitted)
             Text('Đúng $correctCount/${englishWords.length}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+        ],
+      ),
+    );
+  }
+}
+
+class GrammarQuizScreen extends StatefulWidget {
+  final String tenseId;
+  final String tenseName;
+  final void Function(int score) onFinish;
+  const GrammarQuizScreen({Key? key, required this.tenseId, required this.tenseName, required this.onFinish}) : super(key: key);
+  @override
+  State<GrammarQuizScreen> createState() => _GrammarQuizScreenState();
+}
+
+class _GrammarQuizScreenState extends State<GrammarQuizScreen> {
+  late List<_GrammarQuestion> questions;
+  int current = 0;
+  int correct = 0;
+  final _controller = TextEditingController();
+  bool showResult = false;
+  bool? isCorrect;
+
+  @override
+  void initState() {
+    super.initState();
+    questions = getGrammarTest(widget.tenseId);
+  }
+
+  void _submit() {
+    final userAnswer = _controller.text.trim().toLowerCase();
+    final correctAnswer = questions[current].answer.trim().toLowerCase();
+    if (userAnswer == correctAnswer) correct++;
+    setState(() {
+      isCorrect = userAnswer == correctAnswer;
+    });
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (current < questions.length - 1) {
+        setState(() {
+          current++;
+          _controller.clear();
+          isCorrect = null;
+        });
+      } else {
+        setState(() {
+          showResult = true;
+        });
+        Future.delayed(const Duration(seconds: 2), () {
+          widget.onFinish(correct);
+          Navigator.pop(context);
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (showResult) {
+      return Center(child: Text('Bạn đúng $correct/${questions.length}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.green)));
+    }
+    final q = questions[current];
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${widget.tenseName} - Câu ${current + 1}/${questions.length}', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 16),
+          Text(q.question, style: TextStyle(fontSize: 18)),
+          SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            enabled: isCorrect == null,
+            decoration: InputDecoration(
+              labelText: 'Điền đáp án',
+              border: OutlineInputBorder(),
+              suffixIcon: isCorrect == null
+                  ? null
+                  : (isCorrect!
+                      ? Icon(Icons.check, color: Colors.green)
+                      : Icon(Icons.close, color: Colors.red)),
+            ),
+            onSubmitted: (_) {
+              if (isCorrect == null && _controller.text.trim().isNotEmpty) _submit();
+            },
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: isCorrect == null && _controller.text.trim().isNotEmpty ? _submit : null,
+            child: Text(current < questions.length - 1 ? 'Tiếp' : 'Nộp bài'),
+          ),
+          if (isCorrect != null && !isCorrect!)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text('Đáp án đúng: ${q.answer}', style: TextStyle(color: Colors.red)),
+            ),
         ],
       ),
     );
