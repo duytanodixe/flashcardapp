@@ -6,19 +6,49 @@ import 'package:doantotnghiep/flashcard/flashcard_cubit.dart';
 import 'package:doantotnghiep/flashcard/flashcard_state.dart';
 
 class FlashcardScreen extends StatefulWidget {
+  final String courseId;
+  final void Function(int percent)? onProgress;
+  const FlashcardScreen({Key? key, required this.courseId, this.onProgress}) : super(key: key);
+
   @override
   _FlashcardScreenState createState() => _FlashcardScreenState();
 }
 
 class _FlashcardScreenState extends State<FlashcardScreen> {
   late FlutterTts _flutterTts;
+  int _currentIndex = 0;
+  int _correctCount = 0;
+  bool _showQuiz = false;
+  List<FlashcardData> _cards = [];
+  List<bool> _quizResults = [];
 
   @override
   void initState() {
     super.initState();
     _flutterTts = FlutterTts();
-    _flutterTts.setLanguage('vi-VN');
+    _flutterTts.setLanguage('en-EN');
     _flutterTts.setSpeechRate(0.5);
+  }
+
+  void _nextCard() {
+    setState(() {
+      if (_currentIndex < _cards.length - 1) {
+        _currentIndex++;
+      } else {
+        _showQuiz = true;
+      }
+    });
+  }
+
+  void _onQuizFinish(int correct) {
+    setState(() {
+      _correctCount = correct;
+      _showQuiz = false;
+      _currentIndex = 0;
+    });
+    if (widget.onProgress != null && _cards.isNotEmpty) {
+      widget.onProgress!(((_correctCount / _cards.length) * 100).round());
+    }
   }
 
   @override
@@ -30,9 +60,11 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => FlashcardCubit()..loadDummy(),
+      create: (_) => FlashcardCubit()..loadCourse(widget.courseId),
       child: Scaffold(
-        appBar: AppBar(title: Text('Flashcards Demo')),
+        appBar: AppBar(
+          title: Text('Course ${widget.courseId.replaceAll('course', '')}'),
+        ),
         body: BlocBuilder<FlashcardCubit, FlashcardState>(
           builder: (context, state) {
             if (state is FlashcardLoading) {
@@ -40,20 +72,39 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
             } else if (state is FlashcardError) {
               return Center(child: Text(state.message));
             } else if (state is FlashcardLoaded) {
-              return PageView.builder(
-                itemCount: state.cards.length,
-                itemBuilder: (context, index) {
-                  return Center(
-                    child: FractionallySizedBox(
-                      widthFactor: 0.9,
-                      heightFactor: 0.7,
-                      child: FlipFlashcard(
-                        card: state.cards[index],
-                        tts: _flutterTts,
-                      ),
+              if (_cards.isEmpty) {
+                _cards = state.cards;
+                _quizResults = List.filled(_cards.length, false);
+              }
+              if (_showQuiz) {
+                return QuizScreen(
+                  cards: _cards,
+                  onFinish: _onQuizFinish,
+                );
+              }
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12.0),
+                    child: Text(
+                      '${_currentIndex + 1}/${_cards.length}',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                  );
-                },
+                  ),
+                  Expanded(
+                    child: FlipFlashcard(
+                      card: _cards[_currentIndex],
+                      tts: _flutterTts,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: ElevatedButton(
+                      onPressed: _nextCard,
+                      child: Text(_currentIndex < _cards.length - 1 ? 'Next' : 'Kiểm tra'),
+                    ),
+                  ),
+                ],
               );
             }
             return SizedBox.shrink();
@@ -85,6 +136,16 @@ class _FlipFlashcardState extends State<FlipFlashcard>
       vsync: this,
       duration: Duration(milliseconds: 500),
     );
+  }
+
+  Future<void> _speakEnglish(String text) async {
+    await widget.tts.setLanguage('en-US');
+    await widget.tts.speak(text);
+  }
+
+  Future<void> _speakVietnamese(String text) async {
+    await widget.tts.setLanguage('vi-VN');
+    await widget.tts.speak(text);
   }
 
   void _toggleCard() {
@@ -169,7 +230,7 @@ class _FlipFlashcardState extends State<FlipFlashcard>
                 ),
                 IconButton(
                   icon: Icon(Icons.volume_up),
-                  onPressed: () => widget.tts.speak(widget.card.text),
+                  onPressed: () => _speakEnglish(widget.card.text),
                 ),
               ],
             ),
@@ -180,7 +241,7 @@ class _FlipFlashcardState extends State<FlipFlashcard>
   }
 
   Widget _buildBack() {
-    final meaning = widget.card.text + ' (nghĩa tiếng Việt)';
+    final meaning = widget.card.meaning ?? '';
     return Card(
       elevation: 4,
       color: Colors.blue[50],
@@ -190,15 +251,95 @@ class _FlipFlashcardState extends State<FlipFlashcard>
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
-              meaning,
+              meaning.isNotEmpty ? meaning : 'Đang dịch...',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
           ),
           IconButton(
             icon: Icon(Icons.volume_up),
-            onPressed: () => widget.tts.speak(meaning),
+            onPressed: () => _speakVietnamese(meaning),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class QuizScreen extends StatefulWidget {
+  final List<FlashcardData> cards;
+  final void Function(int correct) onFinish;
+  const QuizScreen({Key? key, required this.cards, required this.onFinish}) : super(key: key);
+  @override
+  State<QuizScreen> createState() => _QuizScreenState();
+}
+
+class _QuizScreenState extends State<QuizScreen> {
+  int _current = 0;
+  int _correct = 0;
+  final _controller = TextEditingController();
+  bool _showResult = false;
+  bool _isCorrect = false;
+
+  void _check() {
+    setState(() {
+      _isCorrect = _controller.text.trim().toLowerCase() == widget.cards[_current].text.trim().toLowerCase();
+      if (_isCorrect) _correct++;
+      _showResult = true;
+    });
+  }
+
+  void _next() {
+    setState(() {
+      _controller.clear();
+      _showResult = false;
+      _isCorrect = false;
+      if (_current < widget.cards.length - 1) {
+        _current++;
+      } else {
+        widget.onFinish(_correct);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final card = widget.cards[_current];
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (card.imagePath != null)
+            Image.asset(card.imagePath!, height: 180),
+          SizedBox(height: 16),
+          Text(card.meaning ?? '', style: TextStyle(fontSize: 20)),
+          SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            decoration: InputDecoration(labelText: 'Nhập từ tiếng Anh'),
+            enabled: !_showResult,
+          ),
+          SizedBox(height: 16),
+          if (!_showResult)
+            ElevatedButton(
+              onPressed: _check,
+              child: Text('Kiểm tra'),
+            ),
+          if (_showResult)
+            Column(
+              children: [
+                Text(_isCorrect ? 'Đúng!' : 'Sai! Đáp án: ${card.text}',
+                    style: TextStyle(
+                        color: _isCorrect ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.bold)),
+                SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: _next,
+                  child: Text(_current < widget.cards.length - 1 ? 'Tiếp' : 'Hoàn thành'),
+                ),
+              ],
+            ),
         ],
       ),
     );

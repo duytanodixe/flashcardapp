@@ -2,12 +2,22 @@ class FlashcardData {
   final String text;
   final String? imagePath;
   final String? voiceUrl;
+  final String? meaning; // nghĩa tiếng Việt
 
   FlashcardData({
     required this.text,
     this.imagePath,
     this.voiceUrl,
+    this.meaning,
   });
+}
+
+class Course {
+  final String id;
+  final String name;
+  final List<FlashcardData> cards;
+
+  Course({required this.id, required this.name, required this.cards});
 }
 
 abstract class FlashcardState {}

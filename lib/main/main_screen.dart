@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:doantotnghiep/main/main_cubit.dart';
 import 'package:doantotnghiep/main/main_state.dart';
 import 'package:doantotnghiep/flashcard/flashcard_screen.dart';
+import 'package:doantotnghiep/flashcard/add_flashcard.dart';
+import 'package:doantotnghiep/profile/profile_screen.dart';
+import 'package:doantotnghiep/setting/setting_screen.dart';
 
 class MainScreen extends StatelessWidget {
   @override
@@ -34,7 +37,11 @@ class MainScreen extends StatelessWidget {
   Widget _buildBody(Section section) {
     switch (section) {
       case Section.flashcard:
-        return FlashcardScreen();
+        return CourseListScreen();
+      case Section.profile:
+        return ProfileScreen();
+      case Section.settings:
+        return SettingScreen();
       default:
         return Center(child: Text('Mục khác'));
     }
