@@ -3,10 +3,10 @@ import 'profile_state.dart';
 
 class ProfileCubit extends Cubit<ProfileState> {
   ProfileCubit() : super(ProfileState(
-    avatarUrl: '',
-    displayName: 'John Doe',
-    username: 'johndoe',
-    email: 'john@example.com',
+    avatarUrl: 'assets/ava.jpg',
+    displayName: 'Hoàng Minh',
+    username: 'map',
+    email: 'minh@gmail.com',
     totalCards: 123,
     accuracy: 87.5,
     streak: 8,

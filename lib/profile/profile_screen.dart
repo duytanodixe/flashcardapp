@@ -16,8 +16,7 @@ class ProfileScreen extends StatelessWidget {
                 SizedBox(height: 24),
                 CircleAvatar(
                   radius: 48,
-                  backgroundImage: state.avatarUrl.isNotEmpty ? NetworkImage(state.avatarUrl) : null,
-                  child: state.avatarUrl.isEmpty ? Icon(Icons.person, size: 48) : null,
+                  backgroundImage: AssetImage('assets/ava.jpg'),
                 ),
                 TextButton(onPressed: () {}, child: Text('Change Avatar')),
                 SizedBox(height: 8),

@@ -4,6 +4,7 @@ import 'package:doantotnghiep/main/main_cubit.dart';
 import 'package:doantotnghiep/main/main_state.dart';
 import 'package:doantotnghiep/flashcard/flashcard_screen.dart';
 import 'package:doantotnghiep/flashcard/add_flashcard.dart';
+import 'package:doantotnghiep/flashcard/flashcard_tab_screen.dart';
 import 'package:doantotnghiep/profile/profile_screen.dart';
 import 'package:doantotnghiep/setting/setting_screen.dart';
 
@@ -37,7 +38,7 @@ class MainScreen extends StatelessWidget {
   Widget _buildBody(Section section) {
     switch (section) {
       case Section.flashcard:
-        return CourseListScreen();
+        return FlashcardTabScreen(); // Sử dụng màn hình 2 tab mới
       case Section.profile:
         return ProfileScreen();
       case Section.settings:

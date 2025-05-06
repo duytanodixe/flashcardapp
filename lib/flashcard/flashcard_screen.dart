@@ -8,7 +8,8 @@ import 'package:doantotnghiep/flashcard/flashcard_state.dart';
 class FlashcardScreen extends StatefulWidget {
   final String courseId;
   final void Function(int percent)? onProgress;
-  const FlashcardScreen({Key? key, required this.courseId, this.onProgress}) : super(key: key);
+  final String? courseName;
+  const FlashcardScreen({Key? key, required this.courseId, this.onProgress, this.courseName}) : super(key: key);
 
   @override
   _FlashcardScreenState createState() => _FlashcardScreenState();
@@ -21,6 +22,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
   bool _showQuiz = false;
   List<FlashcardData> _cards = [];
   List<bool> _quizResults = [];
+  int _progressPercent = 0;
 
   @override
   void initState() {
@@ -45,9 +47,10 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
       _correctCount = correct;
       _showQuiz = false;
       _currentIndex = 0;
+      _progressPercent = ((_correctCount / (_cards.isNotEmpty ? _cards.length : 1)) * 100).round();
     });
     if (widget.onProgress != null && _cards.isNotEmpty) {
-      widget.onProgress!(((_correctCount / _cards.length) * 100).round());
+      widget.onProgress!(_progressPercent);
     }
   }
 
@@ -63,7 +66,7 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
       create: (_) => FlashcardCubit()..loadCourse(widget.courseId),
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Course ${widget.courseId.replaceAll('course', '')}'),
+          title: Text(widget.courseName ?? _getCourseName(widget.courseId)),
         ),
         body: BlocBuilder<FlashcardCubit, FlashcardState>(
           builder: (context, state) {
@@ -77,18 +80,55 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
                 _quizResults = List.filled(_cards.length, false);
               }
               if (_showQuiz) {
+                if (widget.courseId == 'course2') {
+                  return MatchingQuizScreen(
+                    cards: _cards,
+                    onFinish: _onQuizFinish,
+                  );
+                }
                 return QuizScreen(
                   cards: _cards,
                   onFinish: _onQuizFinish,
                 );
               }
+              double percent = _progressPercent / 100.0;
               return Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 12.0),
-                    child: Text(
-                      '${_currentIndex + 1}/${_cards.length}',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    padding: const EdgeInsets.only(top: 12.0, left: 16, right: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_currentIndex + 1}/${_cards.length}',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        Stack(
+                          children: [
+                            Container(
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            Container(
+                              height: 16,
+                              width: MediaQuery.of(context).size.width * percent,
+                              decoration: BoxDecoration(
+                                color: percent == 1.0 ? Colors.green : Colors.blue,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text('${_progressPercent}%', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
                     ),
                   ),
                   Expanded(
@@ -112,6 +152,35 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
         ),
       ),
     );
+  }
+
+  String _getCourseName(String id) {
+    switch (id) {
+      case 'course1':
+        return 'Boy & Girl';
+      case 'course2':
+        return 'Animals';
+      case 'present_simple':
+        return 'Present Simple';
+      case 'present_continuous':
+        return 'Present Continuous';
+      case 'present_perfect':
+        return 'Present Perfect';
+      case 'past_simple':
+        return 'Past Simple';
+      case 'past_continuous':
+        return 'Past Continuous';
+      case 'past_perfect':
+        return 'Past Perfect';
+      case 'future_simple':
+        return 'Future Simple';
+      case 'future_continuous':
+        return 'Future Continuous';
+      case 'future_perfect':
+        return 'Future Perfect';
+      default:
+        return 'Course';
+    }
   }
 }
 
@@ -340,6 +409,204 @@ class _QuizScreenState extends State<QuizScreen> {
                 ),
               ],
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class MatchingQuizScreen extends StatefulWidget {
+  final List<FlashcardData> cards;
+  final void Function(int correct) onFinish;
+  const MatchingQuizScreen({Key? key, required this.cards, required this.onFinish}) : super(key: key);
+  @override
+  State<MatchingQuizScreen> createState() => _MatchingQuizScreenState();
+}
+
+class _MatchingQuizScreenState extends State<MatchingQuizScreen> {
+  late List<String> englishWords;
+  late List<String> vietnameseWords;
+  Map<int, int?> matches = {}; // key: index tiếng Anh, value: index tiếng Việt
+  Map<int, int?> reverseMatches = {}; // key: index tiếng Việt, value: index tiếng Anh
+  int? selectedLeft;
+  bool submitted = false;
+  int correctCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    englishWords = widget.cards.map((c) => c.text).toList();
+    vietnameseWords = widget.cards.map((c) => c.meaning ?? '').toList();
+    vietnameseWords.shuffle();
+    for (int i = 0; i < englishWords.length; i++) {
+      matches[i] = null;
+    }
+    for (int j = 0; j < vietnameseWords.length; j++) {
+      reverseMatches[j] = null;
+    }
+  }
+
+  void _selectLeft(int i) {
+    if (submitted) return;
+    setState(() {
+      if (selectedLeft == i) {
+        // Hủy chọn nếu bấm lại
+        selectedLeft = null;
+      } else {
+        selectedLeft = i;
+      }
+    });
+  }
+
+  void _selectRight(int j) {
+    if (submitted || selectedLeft == null) return;
+    // Nếu đã nối, bấm lại để hủy nối
+    if (reverseMatches[j] != null) {
+      setState(() {
+        int leftIdx = reverseMatches[j]!;
+        matches[leftIdx] = null;
+        reverseMatches[j] = null;
+      });
+      return;
+    }
+    // Nếu vế trái đã nối với vế phải khác, hủy nối cũ
+    if (matches[selectedLeft!] != null) {
+      setState(() {
+        int oldRight = matches[selectedLeft!]!;
+        reverseMatches[oldRight] = null;
+      });
+    }
+    setState(() {
+      matches[selectedLeft!] = j;
+      reverseMatches[j] = selectedLeft!;
+      selectedLeft = null;
+    });
+  }
+
+  void _unmatchLeft(int i) {
+    if (submitted) return;
+    if (matches[i] != null) {
+      setState(() {
+        int rightIdx = matches[i]!;
+        matches[i] = null;
+        reverseMatches[rightIdx] = null;
+      });
+    }
+  }
+
+  void _submit() {
+    int correct = 0;
+    for (int i = 0; i < englishWords.length; i++) {
+      final viIndex = matches[i];
+      if (viIndex != null && vietnameseWords[viIndex] == (widget.cards[i].meaning ?? '')) {
+        correct++;
+      }
+    }
+    setState(() {
+      submitted = true;
+      correctCount = correct;
+    });
+    Future.delayed(Duration(seconds: 2), () {
+      widget.onFinish(correct);
+    });
+  }
+
+  Color? _getLeftColor(int i) {
+    if (submitted) {
+      final viIndex = matches[i];
+      if (viIndex != null && vietnameseWords[viIndex] == (widget.cards[i].meaning ?? '')) {
+        return Colors.green[200];
+      } else if (viIndex != null) {
+        return Colors.red[200];
+      }
+    }
+    if (selectedLeft == i) return Colors.blue[100];
+    return null;
+  }
+
+  Color? _getRightColor(int j) {
+    if (submitted) {
+      final leftIndex = reverseMatches[j];
+      if (leftIndex != null && vietnameseWords[j] == (widget.cards[leftIndex].meaning ?? '')) {
+        return Colors.green[200];
+      } else if (leftIndex != null) {
+        return Colors.red[200];
+      }
+    }
+    return null;
+  }
+
+  Widget _buildLeftItem(int i) {
+    final matchIdx = matches[i];
+    return Card(
+      color: _getLeftColor(i),
+      child: ListTile(
+        leading: Text('${i + 1}', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(englishWords[i]),
+        trailing: matchIdx != null ? CircleAvatar(radius: 12, child: Text('${matchIdx + 1}', style: TextStyle(fontSize: 12))) : null,
+        onTap: () {
+          if (matchIdx != null) {
+            _unmatchLeft(i);
+          } else {
+            _selectLeft(i);
+          }
+        },
+        selected: selectedLeft == i,
+      ),
+    );
+  }
+
+  Widget _buildRightItem(int j) {
+    final matchIdx = reverseMatches[j];
+    return Card(
+      color: _getRightColor(j),
+      child: ListTile(
+        leading: Text('${j + 1}', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(vietnameseWords[j]),
+        trailing: matchIdx != null ? CircleAvatar(radius: 12, child: Text('${matchIdx + 1}', style: TextStyle(fontSize: 12))) : null,
+        onTap: () {
+          _selectRight(j);
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Text('Nối từ tiếng Anh với nghĩa tiếng Việt', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 16),
+          Expanded(
+            child: Row(
+              children: [
+                // Cột tiếng Anh
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: englishWords.length,
+                    itemBuilder: (context, i) => _buildLeftItem(i),
+                  ),
+                ),
+                SizedBox(width: 16),
+                // Cột tiếng Việt
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: vietnameseWords.length,
+                    itemBuilder: (context, j) => _buildRightItem(j),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!submitted)
+            ElevatedButton(
+              onPressed: matches.values.any((v) => v == null) ? null : _submit,
+              child: Text('Nộp bài'),
+            ),
+          if (submitted)
+            Text('Đúng $correctCount/${englishWords.length}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
         ],
       ),
     );
