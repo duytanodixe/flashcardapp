@@ -9,6 +9,10 @@ import 'package:doantotnghiep/profile/profile_screen.dart';
 import 'package:doantotnghiep/setting/setting_screen.dart';
 
 class MainScreen extends StatelessWidget {
+  final void Function(ThemeMode)? setThemeMode;
+  final ThemeMode? themeMode;
+  MainScreen({this.setThemeMode, this.themeMode});
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider<MainCubit>(
@@ -38,13 +42,14 @@ class MainScreen extends StatelessWidget {
   Widget _buildBody(Section section) {
     switch (section) {
       case Section.flashcard:
-        return FlashcardTabScreen(); // Sử dụng màn hình 2 tab mới
+        return FlashcardTabScreen();
       case Section.profile:
         return ProfileScreen();
       case Section.settings:
-        return SettingScreen();
-      default:
-        return Center(child: Text('Mục khác'));
+        return SettingScreen(
+          setThemeMode: setThemeMode,
+          themeMode: themeMode,
+        );
     }
   }
 }

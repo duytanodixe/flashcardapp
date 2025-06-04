@@ -1,8 +1,21 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:doantotnghiep/login/login_state.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginCubit extends Cubit<LoginState> {
   LoginCubit() : super(LoginInitial());
+
+  final _db = FirebaseFirestore.instance;
+
+  Future<void> _ensureSampleAccount() async {
+    final snap = await _db.collection('users').where('email', isEqualTo: 'a4@gmail.com').get();
+    if (snap.docs.isEmpty) {
+      await _db.collection('users').add({
+        'email': 'a4@gmail.com',
+        'password': 'a4@gmail.com',
+      });
+    }
+  }
 
   bool _isValidEmail(String email) {
     final emailRegex = RegExp(r"^[a-zA-Z0-9.!#\$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*");
@@ -17,17 +30,20 @@ class LoginCubit extends Cubit<LoginState> {
 
   Future<void> login(String email, String password) async {
     emit(LoginLoading());
-    await Future.delayed(Duration(seconds: 1));
+    await _ensureSampleAccount();
+    await Future.delayed(Duration(milliseconds: 500));
     if (email.isEmpty || password.isEmpty) {
       emit(LoginFailure('Email hoặc mật khẩu không được để trống'));
       return;
     }
-    if (!_isValidEmail(email)) {
-      emit(LoginFailure('Email không đúng định dạng.'));
+    final snap = await _db.collection('users').where('email', isEqualTo: email).get();
+    if (snap.docs.isEmpty) {
+      emit(LoginFailure('Tài khoản không tồn tại.'));
       return;
     }
-    if (!_isValidPassword(password)) {
-      emit(LoginFailure('Mật khẩu phải tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.'));
+    final user = snap.docs.first.data();
+    if (user['password'] != password) {
+      emit(LoginFailure('Sai mật khẩu.'));
       return;
     }
     emit(LoginSuccess());

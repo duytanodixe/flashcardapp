@@ -1,58 +1,87 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'setting_cubit.dart';
-import 'setting_state.dart';
 
 class SettingScreen extends StatefulWidget {
+  final void Function(ThemeMode)? setThemeMode;
+  final ThemeMode? themeMode;
+  SettingScreen({this.setThemeMode, this.themeMode});
   @override
   State<SettingScreen> createState() => _SettingScreenState();
 }
 
 class _SettingScreenState extends State<SettingScreen> {
+  double _fontSize = 16.0;
   bool fakeSwitch = false;
   String fakeDropdown = 'Light';
-  double fakeSlider = 16.0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.themeMode == ThemeMode.dark) fakeDropdown = 'Dark';
+    else fakeDropdown = 'Light';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: EdgeInsets.all(16),
-      children: [
-        _SectionTitle('Account & Security'),
-        _SimpleTile('Change Password', onTap: () => _showSnack('Change Password')),
-        _SimpleTile('Change Email', onTap: () => _showSnack('Change Email')),
-        _SwitchTile('2FA', value: fakeSwitch, onChanged: (v) => setState(() => fakeSwitch = v)),
-        _SimpleTile('Logout', onTap: () => _showSnack('Logout')),
-        _SimpleTile('Delete Account', onTap: () => _showSnack('Delete Account')),
-        Divider(),
-        _SectionTitle('Appearance & Personalization'),
-        _DropdownTile('Theme', value: fakeDropdown, items: ['Light','Dark','System'], onChanged: (v) => setState(() => fakeDropdown = v)),
-        _SliderTile('Font Size', value: fakeSlider, min: 12, max: 24, onChanged: (v) => setState(() => fakeSlider = v)),
-        Divider(),
-        _SectionTitle('Notifications'),
-        _SwitchTile('Daily Reminder', value: fakeSwitch, onChanged: (v) => setState(() => fakeSwitch = v)),
-        _SimpleTile('Reminder Time: 20:00', onTap: () => _showSnack('Change Reminder Time')),
-        Divider(),
-        _SectionTitle('Sync & Backup'),
-        _SwitchTile('Cloud Sync', value: fakeSwitch, onChanged: (v) => setState(() => fakeSwitch = v)),
-        _SimpleTile('Delete Local Data', onTap: () => _showSnack('Delete Local Data')),
-        Divider(),
-        _SectionTitle('Learning & Algorithm'),
-        _SwitchTile('Spaced Repetition', value: fakeSwitch, onChanged: (v) => setState(() => fakeSwitch = v)),
-        _SimpleTile('Min Interval: 1 days', onTap: () => _showSnack('Change Min Interval')),
-        _SimpleTile('Max Interval: 7 days', onTap: () => _showSnack('Change Max Interval')),
-        Divider(),
-        _SectionTitle('Help & Info'),
-        _SimpleTile('User Guide', onTap: () => _showSnack('User Guide')),
-        _SimpleTile('Feedback/Bug Report', onTap: () => _showSnack('Feedback/Bug Report')),
-        _SimpleTile('About & Version: v1.0.0', onTap: () => _showSnack('About & Version')),
-        _SimpleTile('Terms & Privacy', onTap: () => _showSnack('Terms & Privacy')),
-      ],
+    return Theme(
+      data: Theme.of(context).copyWith(
+        textTheme: Theme.of(context).textTheme.apply(fontSizeFactor: _fontSize / 16.0),
+      ),
+      child: ListView(
+        padding: EdgeInsets.all(16),
+        children: [
+          _SectionTitle('Account & Security'),
+          _SimpleTile('Change Password', onTap: () => _showSnack('Change Password')),
+          _SimpleTile('Change Email', onTap: () => _showSnack('Change Email')),
+          _SimpleTile('Logout', onTap: () => _showSnack('Logout')),
+          Divider(),
+          _SectionTitle('Appearance & Personalization'),
+          _DropdownTile('Theme', value: fakeDropdown, items: ['Light','Dark'], onChanged: (v) {
+            setState(() {
+              fakeDropdown = v;
+              if (widget.setThemeMode != null) {
+                if (v == 'Light') widget.setThemeMode!(ThemeMode.light);
+                else widget.setThemeMode!(ThemeMode.dark);
+              }
+            });
+          }),
+          _SliderTile('Font Size', value: _fontSize, min: 12, max: 24, onChanged: (v) => setState(() => _fontSize = v)),
+          Divider(),
+          _SectionTitle('Notifications'),
+          _SwitchTile('Daily Reminder', value: fakeSwitch, onChanged: (v) => setState(() => fakeSwitch = v)),
+          _SimpleTile('Reminder Time: 20:00', onTap: () => _showSnack('Change Reminder Time')),
+          Divider(),
+          _SectionTitle('Sync & Backup'),
+          _SwitchTile('Cloud Sync', value: fakeSwitch, onChanged: (v) => setState(() => fakeSwitch = v)),
+          _SimpleTile('Delete Local Data', onTap: () => _showSnack('Delete Local Data')),
+          Divider(),
+          _SectionTitle('Learning & Algorithm'),
+          _SwitchTile('Spaced Repetition', value: fakeSwitch, onChanged: (v) => setState(() => fakeSwitch = v)),
+          _SimpleTile('Min Interval: 1 days', onTap: () => _showSnack('Change Min Interval')),
+          _SimpleTile('Max Interval: 7 days', onTap: () => _showSnack('Change Max Interval')),
+          Divider(),
+          _SectionTitle('Help & Info'),
+          _SimpleTile('User Guide', onTap: () => _showDialog('User Guide', 'Hướng dẫn sử dụng:\n\n- Đăng nhập hoặc đăng ký tài khoản.\n- Thêm flashcard mới ở tab Flashcard.\n- Ôn tập và kiểm tra tiến độ học tập ở tab Profile.\n- Tuỳ chỉnh cài đặt tại tab Settings.')),
+          _SimpleTile('Feedback/Bug Report', onTap: () => _showDialog('Feedback & Bug Report', 'Nếu bạn gặp lỗi hoặc có góp ý, vui lòng gửi email tới: support@flashcardapp.com hoặc điền vào form phản hồi trên website.')),
+          _SimpleTile('About & Version: v1.0.0', onTap: () => _showDialog('About', 'FlashcardApp v1.0.0\n\nỨng dụng hỗ trợ học tập qua flashcard, phát triển bởi nhóm doantotnghiep.')),
+          _SimpleTile('Terms & Privacy', onTap: () => _showDialog('Terms & Privacy', 'Chúng tôi cam kết bảo vệ thông tin cá nhân của bạn. Dữ liệu chỉ dùng cho mục đích học tập và không chia sẻ cho bên thứ ba.')),
+        ],
+      ),
     );
   }
 
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  void _showDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('OK'))],
+      ),
+    );
   }
 }
 

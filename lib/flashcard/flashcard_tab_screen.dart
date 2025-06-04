@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'flashcard_cubit.dart';
+import 'flashcard_state.dart';
 import 'flashcard_screen.dart';
 import 'test.dart';  // Import file test.dart
 
@@ -80,38 +83,41 @@ class _FlashcardTabScreenState extends State<FlashcardTabScreen> {
         ),
         body: TabBarView(
           children: [
-            // Tab 1: 2 course sẵn có
-            ListView(
-              children: [
-                ListTile(
-                  title: Text('Boy & Girl'),
-                  subtitle: _buildProgressBar('course1'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FlashcardScreen(
-                        courseId: 'course1',
-                        courseName: 'Boy & Girl',
-                        onProgress: (percent) => _updateProgress('course1', percent),
+            // Tab 1: Chỉ hiển thị danh sách các khóa học, có đánh số thứ tự
+            FutureBuilder(
+              future: FlashcardCubit().loadCourses(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Lỗi tải khóa học'));
+                }
+                final courses = snapshot.data as List<Course>? ?? [];
+                return ListView.separated(
+                  itemCount: courses.length,
+                  separatorBuilder: (_, __) => Divider(),
+                  itemBuilder: (context, i) {
+                    final course = courses[i];
+                    return ListTile(
+                      leading: CircleAvatar(child: Text('${i + 1}')),
+                      title: Text(course.name),
+                      subtitle: _buildProgressBar(course.id),
+                      trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FlashcardScreen(
+                            courseId: course.id,
+                            courseName: course.name,
+                            onProgress: (percent) => _updateProgress(course.id, percent),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-                ListTile(
-                  title: Text('Animals'),
-                  subtitle: _buildProgressBar('course2'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FlashcardScreen(
-                        courseId: 'course2',
-                        courseName: 'Animals',
-                        onProgress: (percent) => _updateProgress('course2', percent),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                    );
+                  },
+                );
+              },
             ),
             // Tab 2: Các thì tiếng Anh
             ListView(
@@ -121,40 +127,9 @@ class _FlashcardTabScreenState extends State<FlashcardTabScreen> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Công thức: ${tenseFormulas[tense['id']!] ?? ''}'),
-                      if (_grammarScores[tense['id']] != null)
-                        Text('Điểm: ${_grammarScores[tense['id']]} / 5', 
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold, 
-                            color: _grammarScores[tense['id']] == 5 ? Colors.green : Colors.blue
-                          )
-                        ),
+                      Text('Công thức: ${tenseFormulas[tense['id']]}'),
                     ],
                   ),
-                  onTap: () async {
-                    final score = await Navigator.push<int>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => Scaffold(
-                          appBar: AppBar(
-                            title: Text(tense['name']!),
-                          ),
-                          body: GrammarQuizScreen(
-                            tenseId: tense['id']!,
-                            tenseName: tense['name']!,
-                            onFinish: (score) {
-                              Navigator.pop(context, score);
-                            },
-                          ),
-                        ),
-                      ),
-                    );
-                    if (score != null) {
-                      setState(() {
-                        _grammarScores[tense['id']!] = score;
-                      });
-                    }
-                  },
                 ),
               )).toList(),
             ),
