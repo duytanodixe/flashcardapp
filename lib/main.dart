@@ -34,7 +34,10 @@ class _MyAppState extends State<MyApp> {
       initialRoute: '/login',
       routes: {
         '/login': (_) => LoginScreen(),
-        '/main': (_) => MainScreen(setThemeMode: setThemeMode, themeMode: _themeMode),
+        '/main': (_) => MainScreen(
+          setThemeMode: setThemeMode,
+          themeMode: _themeMode,
+        ),
         '/signup': (_) => SignupScreen(),
       },
     );

@@ -5,6 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:doantotnghiep/flashcard/flashcard_cubit.dart';
 import 'package:doantotnghiep/flashcard/flashcard_state.dart';
 import 'package:doantotnghiep/flashcard/test.dart';
+import 'package:doantotnghiep/flashcard/add_flashcard_screen.dart';
 
 class FlashcardScreen extends StatefulWidget {
   final String courseId;
@@ -72,6 +73,26 @@ class _FlashcardScreenState extends State<FlashcardScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.courseName ?? _getCourseName(widget.courseId)),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.add),
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddFlashcardScreen(
+                      courseId: widget.courseId,
+                      courseName: widget.courseName ?? _getCourseName(widget.courseId),
+                    ),
+                  ),
+                );
+                if (result == true) {
+                  // Nếu thêm thành công, load lại danh sách flashcard
+                  context.read<FlashcardCubit>().loadCourse(widget.courseId);
+                }
+              },
+            ),
+          ],
         ),
         body: BlocBuilder<FlashcardCubit, FlashcardState>(
           builder: (context, state) {
@@ -299,12 +320,39 @@ class _FlipFlashcardState extends State<FlipFlashcard>
         children: [
           Expanded(
             child: widget.card.imagePath != null
-                ? Image.asset(
-                    widget.card.imagePath!,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  )
-                : SizedBox.shrink(),
+                ? widget.card.imagePath!.startsWith('assets/')
+                    ? Image.asset(
+                        widget.card.imagePath!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: Center(
+                              child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey[600]),
+                            ),
+                          );
+                        },
+                      )
+                    : Image.network(
+                        widget.card.imagePath!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: Center(
+                              child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey[600]),
+                            ),
+                          );
+                        },
+                      )
+                : Container(
+                    color: Colors.grey[300],
+                    child: Center(
+                      child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey[600]),
+                    ),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
