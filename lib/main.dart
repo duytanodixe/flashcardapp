@@ -3,6 +3,7 @@ import 'package:doantotnghiep/login/login_screen.dart';
 import 'package:doantotnghiep/main/main_screen.dart';
 import 'package:doantotnghiep/signup/signup_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'main/pronunciation_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

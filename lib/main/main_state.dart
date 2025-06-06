@@ -1,4 +1,4 @@
-enum Section { flashcard, profile, settings }
+enum Section { flashcard, contextualTranslation, pronunciationChecker, profile, settings }
 
 abstract class MainState {}
 class MainInitial extends MainState {} // not used
